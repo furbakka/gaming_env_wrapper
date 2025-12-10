@@ -1,5 +1,9 @@
 # gaming_env_wrapper (gENVW)
 
+<p align="center">
+  <img src="screenshots/gENVW_main.jpg" alt="gENVW interactive wizard in Konsole" width="70%">
+</p>
+
 `gaming_env_wrapper.sh` is a small shell wrapper to control Proton, DXVK, MangoHUD and some CachyOS-related game options using **short environment toggles** in Steam launch options (or from Lutris).
 
 It solves a few problems:
@@ -112,6 +116,13 @@ If stdin/stdout are TTYs, the script will:
   - Fake CPU topology? (N logical CPUs)
   - Wrap with `game-performance` and/or `gamemoderun`?
 
+    ## Preview
+
+  <p align="center">
+  <img src="./screenshots/gENVW_1.jpg" alt="gENVW wizard – HDR/FSR4" width="49%">
+  <img src="./screenshots/gENVW_1.jpg" alt="gENVW wizard – FPS-MangoHUD-CPU-Shader Cache.." width="49%">
+  </p>
+
 At the end it prints something like:
 
 ```text
@@ -124,6 +135,10 @@ HDR=1 FSR4=4.0.2 FPS=141 HUD=1 LSC=1 NVMD=1 NTS=1 CPU=16 GP=1 \
 Copy that line and paste it into:
 
 > **Steam → Properties → General → Launch Options**
+> 
+<p align="center">
+  <img src="screenshots/gENVW_3.jpg" alt="gENVW interactive wizard in Konsole" width="70%">
+</p>
 
 ---
 
