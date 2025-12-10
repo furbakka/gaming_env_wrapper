@@ -120,7 +120,7 @@ If stdin/stdout are TTYs, the script will:
 
   <p align="center">
   <img src="./screenshots/gENVW_1.jpg" alt="gENVW wizard – HDR/FSR4" width="49%">
-  <img src="./screenshots/gENVW_1.jpg" alt="gENVW wizard – FPS-MangoHUD-CPU-Shader Cache.." width="49%">
+  <img src="./screenshots/gENVW_2.jpg" alt="gENVW wizard – FPS-MangoHUD-CPU-Shader Cache.." width="49%">
   </p>
 
 At the end it prints something like:
