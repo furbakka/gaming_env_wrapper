@@ -2,6 +2,7 @@
 #
 # gaming_env_wrapper.sh Proton/DXVK/MangoHUD env wrapper
 # Copyright (C) 2025 furbacca
+GENVW_VERSION="0.2.0"
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,14 +20,64 @@
 # Example Steam launch options:
 #   HDR=1 FSR4=4.0.2 FPS=141 HUD=1 LSC=1 NVMD=1 NTS=1 GP=1 GM=1 CPU=16 \
 #   /home/youruser/bin/gaming_env_wrapper.sh %command%
-#
-# Any toggle you don't set is treated as "off" by default.
 
+# Animated gENVW banner (for interactive wizard only)
+show_genvw_banner() {
+  # Try to get terminal width, fall back to 80
+  cols=$(tput cols 2>/dev/null || echo 80)
+
+  # Approx width of the banner text (characters)
+  BANNER_WIDTH=58
+
+  if [ "$cols" -gt "$BANNER_WIDTH" ]; then
+    indent=$(( (cols - BANNER_WIDTH) / 2 ))
+  else
+    indent=0
+  fi
+
+  # Left padding for centering
+  pad=$(printf '%*s' "$indent" "")
+
+  # Print banner line by line, centered
+  while IFS= read -r line; do
+    [ -z "$line" ] && continue
+
+    # Default: CachyOS cyan
+    color="$CYAN"
+
+    # Special color for "by furbakka" line (orange-ish = yellow)
+    case "$line" in
+      *"by furbakka"*)
+        color="$YELLOW"
+        ;;
+    esac
+
+    printf '%s%s%s%s\n' "$pad" "$color" "$line" "$RESET"
+    sleep 0.25    # delay between lines (increase for slower)
+  done <<'EOF'
+╔══════════════════════════════════════════════════════════╗
+║                          gENVW                          ║
+║          Proton / DXVK / FSR4 / MangoHUD helper         ║
+║                           by furbakka                   ║
+╚══════════════════════════════════════════════════════════╝
+EOF
+
+  printf '\n'
+
+  # Keep it on screen – cyan bold prompt, centered with same padding
+  printf '%s%sPress Enter to start gENVW...%s' "$pad" "$BOLD$CYAN" "$RESET"
+  # Try /dev/tty first, fall back to normal stdin
+  if ! read dummy </dev/tty 2>/dev/null; then
+    read dummy
+  fi
+  echo
+  echo
+}
 
 #####################
 # Colors (only if stdout is a TTY)
 #####################
-if [ -t 1 ]; then
+if [ -t 1 ] && [ -z "${GENVW_NO_COLOR:-}" ]; then
     BOLD=$(printf '\033[1m')
     DIM=$(printf '\033[2m')
     RED=$(printf '\033[31m')
@@ -52,6 +103,7 @@ fi
 # RDNA generation detection helper (best-effort)
 #####################
 detect_rdna_gen() {
+
     if ! command -v lspci >/dev/null 2>&1; then
         echo 0
         return
@@ -73,12 +125,69 @@ detect_rdna_gen() {
 
     echo 0
 }
+show_help() {
+    cat <<EOF
+gENVW (gaming_env_wrapper.sh) - Proton / DXVK / FSR4 / MangoHUD wrapper
 
+Usage:
+  gaming_env_wrapper.sh [ENV_TOGGLES...] <command> [args...]
+  HDR=1 FSR4=4.0.2 FPS=141 HUD=1 LSC=1 NVMD=1 NTS=1 CPU=16 GP=1 GM=1 \\
+    gaming_env_wrapper.sh %command%
+
+Interactive mode:
+  Run gaming_env_wrapper.sh with no arguments in a terminal to start
+  an interactive wizard that asks about HDR, FSR4, FPS limit, etc.
+  It then prints a ready-to-paste Steam launch line.
+
+Toggles (set as environment before the script):
+  HDR=0|1        Wayland HDR path (PROTON_ENABLE_WAYLAND, PROTON_ENABLE_HDR, DXVK_HDR, ENABLE_HDR_WSI)
+  FSR4=0|1|ver   RDNA3 FSR4 (PROTON_FSR4_RDNA3_UPGRADE=1 or =<ver>, allowed custom: 4.0.0, 4.0.1, 4.0.2)
+  FSR4R4=0|1|ver RDNA4/global FSR4 (PROTON_FSR4_UPGRADE=1 or =<ver>)
+  FSR4SHOW=0|1   FSR4 on-screen indicator (PROTON_FSR4_INDICATOR=1)
+  FFSR=0|1-5     Wine fullscreen FSR scaler (SDR only)
+  HUD=0|1        MangoHUD overlay (MANGOHUD=1)
+  FPS=0|N        MangoHUD FPS limiter (also enables MANGOHUD)
+  DEBUG=0|1      Proton/DXVK/VKD3D logging + FSR indicator
+  ASYNC=0|1      DXVK async (singleplayer only)
+  LSC=0|1        Local shader cache (PROTON_LOCAL_SHADER_CACHE=1)
+  NVMD=0|1       No WM decoration (borderless, PROTON_NO_WM_DECORATION=1)
+  NTS=0|1        Use NTSYNC backend (PROTON_USE_NTSYNC=1)
+  CPU=0|N        Fake CPU topology, game sees N logical CPUs
+  GP=0|1         Wrap command in game-performance (CachyOS)
+  GM=0|1         Wrap command in gamemoderun (Feral GameMode)
+
+Other:
+  GENVW_NO_BANNER=1   Disable the animated banner in interactive mode.
+
+Project page:
+  https://github.com/furbakka/gaming-env-wrapper
+EOF
+}
+show_version() {
+    printf 'gENVW (gaming_env_wrapper.sh) version %s\n' "$GENVW_VERSION"
+}
+
+# Help flag: print usage and exit
+if [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
+    show_help
+    exit 0
+fi
+
+# Version flag: print version and exit
+if [ "$1" = "-V" ] || [ "$1" = "--version" ] || [ "$1" = "-v" ]; then
+    show_version
+    exit 0
+fi
 
 #####################
 # INTERACTIVE MODE
 #####################
 if [ "$#" -eq 0 ] && [ -t 0 ]; then
+    # Show animated banner only in interactive mode & real terminal
+    if [ -t 1 ] && [ -z "${GENVW_NO_BANNER:-}" ]; then
+        show_genvw_banner
+    fi
+
     printf "%s\n" "${BOLD}${CYAN}=== gaming_env_wrapper.sh – Interactive Steam launch options generator ===${RESET}"
     echo
     echo "Answer the questions below. At the end you'll get a line you can paste"
@@ -152,7 +261,7 @@ if [ "$#" -eq 0 ] && [ -t 0 ]; then
                 echo "  0 = off"
                 echo "  1 = generic RDNA3 mode (PROTON_FSR4_RDNA3_UPGRADE=1)"
                 echo "  2 = FSR4 4.0.2 (recommended default for RDNA3 right now)"
-                echo "  3 = custom version (digits + dots only, e.g. 4.0.4)"
+                echo "  3 = custom version (allowed: 4.0.0, 4.0.1, 4.0.2)"
                 printf "%s" "${YELLOW}FSR4 choice for RDNA3 [0]: ${RESET}"
                 read choice
                 choice=$(trim "$choice")
@@ -177,8 +286,9 @@ if [ "$#" -eq 0 ] && [ -t 0 ]; then
                         ;;
                     3)
                         while :; do
-                            echo "Enter FSR4 version string for RDNA3 (e.g. 4.0.4). Digits and dots only."
-                            printf "%s" "${YELLOW}FSR4 version: ${RESET}"
+                            echo "Enter FSR4 version string for RDNA3."
+                            echo "Allowed versions: 4.0.0, 4.0.1, 4.0.2"
+                            printf "%s" "${YELLOW}FSR4 version (RDNA3): ${RESET}"
                             read ver
                             ver=$(trim "$ver")
                             case "$ver" in
@@ -186,15 +296,14 @@ if [ "$#" -eq 0 ] && [ -t 0 ]; then
                                     printf "%s\n\n" "${YELLOW}Empty version, skipping custom FSR4 for RDNA3.${RESET}"
                                     break
                                     ;;
-                                *[!0-9.]*)
-                                    printf "%s\n\n" "${RED}Invalid version (letters not allowed). Use only digits and dots.${RESET}"
-                                    continue
-                                    ;;
-                                *)
+                                4.0.0|4.0.1|4.0.2)
                                     LAUNCH_ENV="$LAUNCH_ENV FSR4=$ver"
                                     FSR4_RDNA3_USED=1
                                     echo
                                     break
+                                    ;;
+                                *)
+                                    printf "%s\n\n" "${RED}Invalid version. Allowed values: 4.0.0, 4.0.1, 4.0.2.${RESET}"
                                     ;;
                             esac
                         done
@@ -213,7 +322,7 @@ if [ "$#" -eq 0 ] && [ -t 0 ]; then
                 echo "${BOLD}FSR4R4 (RDNA4):${RESET} FSR4 on RDNA4/global path."
                 echo "  0 = off"
                 echo "  1 = use Proton's default/latest for RDNA4 (PROTON_FSR4_UPGRADE=1)"
-                echo "  2 = custom version (digits + dots only, e.g. 4.0.2)"
+                echo "  2 = custom version (digits and dots only, e.g. 4.0.2)"
                 printf "%s" "${YELLOW}FSR4R4 choice for RDNA4 [0]: ${RESET}"
                 read choice
                 choice=$(trim "$choice")
@@ -268,7 +377,7 @@ if [ "$#" -eq 0 ] && [ -t 0 ]; then
                 echo "  0 = off"
                 echo "  1 = generic RDNA3 mode (PROTON_FSR4_RDNA3_UPGRADE=1)"
                 echo "  2 = FSR4 4.0.2 (recommended default for RDNA3 right now)"
-                echo "  3 = custom version (digits + dots only, e.g. 4.0.4)"
+                echo "  3 = custom version (allowed: 4.0.0, 4.0.1, 4.0.2)"
                 printf "%s" "${YELLOW}FSR4 choice for RDNA3 [0]: ${RESET}"
                 read choice
                 choice=$(trim "$choice")
@@ -293,8 +402,9 @@ if [ "$#" -eq 0 ] && [ -t 0 ]; then
                         ;;
                     3)
                         while :; do
-                            echo "Enter FSR4 version string for RDNA3 (e.g. 4.0.4). Digits and dots only."
-                            printf "%s" "${YELLOW}FSR4 version: ${RESET}"
+                            echo "Enter FSR4 version string for RDNA3."
+                            echo "Allowed versions: 4.0.0, 4.0.1, 4.0.2"
+                            printf "%s" "${YELLOW}FSR4 version (RDNA3): ${RESET}"
                             read ver
                             ver=$(trim "$ver")
                             case "$ver" in
@@ -302,15 +412,14 @@ if [ "$#" -eq 0 ] && [ -t 0 ]; then
                                     printf "%s\n\n" "${YELLOW}Empty version, skipping custom FSR4 for RDNA3.${RESET}"
                                     break
                                     ;;
-                                *[!0-9.]*)
-                                    printf "%s\n\n" "${RED}Invalid version (letters not allowed). Use only digits and dots.${RESET}"
-                                    continue
-                                    ;;
-                                *)
+                                4.0.0|4.0.1|4.0.2)
                                     LAUNCH_ENV="$LAUNCH_ENV FSR4=$ver"
                                     FSR4_RDNA3_USED=1
                                     echo
                                     break
+                                    ;;
+                                *)
+                                    printf "%s\n\n" "${RED}Invalid version. Allowed values: 4.0.0, 4.0.1, 4.0.2.${RESET}"
                                     ;;
                             esac
                         done
@@ -328,7 +437,7 @@ if [ "$#" -eq 0 ] && [ -t 0 ]; then
                     echo "${BOLD}FSR4R4 (RDNA4):${RESET} FSR4 on RDNA4/global path."
                     echo "  0 = off"
                     echo "  1 = use Proton's default/latest for RDNA4 (PROTON_FSR4_UPGRADE=1)"
-                    echo "  2 = custom version (digits + dots only, e.g. 4.0.2)"
+                    echo "  2 = custom version (digits and dots only, e.g. 4.0.2)"
                     printf "%s" "${YELLOW}FSR4R4 choice for RDNA4 [0]: ${RESET}"
                     read choice
                     choice=$(trim "$choice")
@@ -454,6 +563,38 @@ if [ "$#" -eq 0 ] && [ -t 0 ]; then
                 printf "%s\n\n" "${RED}Please enter 0 or a positive number.${RESET}"
                 ;;
             *)
+                # numeric > 0
+                if [ "$val" -gt 140 ] 2>/dev/null; then
+                    # pseudo-random index based on FPS value
+                    idx=$(( val % 8 ))
+                    case "$idx" in
+                        0)
+                            printf "%s\n\n" "${MAGENTA}FPS=${val}? Trying to heat the room with your GPU, huh?${RESET}"
+                            ;;
+                        1)
+                            printf "%s\n\n" "${MAGENTA}FPS=${val}? Your OLED just filed a noise complaint.${RESET}"
+                            ;;
+                        2)
+                            printf "%s\n\n" "${MAGENTA}FPS=${val}? Welcome to the jet engine benchmark lab.${RESET}"
+                            ;;
+                        3)
+                            printf "%s\n\n" "${MAGENTA}FPS=${val}? Human eyes stopped at 60, but okay gamer.${RESET}"
+                            ;;
+                        4)
+                            printf "%s\n\n" "${MAGENTA}FPS=${val}? Even the kernel scheduler is screaming.${RESET}"
+                            ;;
+                        5)
+                            printf "%s\n\n" "${MAGENTA}FPS=${val}? Good luck explaining this power bill to anyone.${RESET}"
+                            ;;
+                        6)
+                            printf "%s\n\n" "${MAGENTA}FPS=${val}? Are you benchmarking time itself or the game?${RESET}"
+                            ;;
+                        7)
+                            printf "%s\n\n" "${MAGENTA}FPS=${val}? CachyOS devs just felt a disturbance in the force.${RESET}"
+                            ;;
+                    esac
+                fi
+
                 LAUNCH_ENV="$LAUNCH_ENV FPS=$val"
                 echo
                 break
@@ -559,8 +700,24 @@ if [ "$#" -eq 0 ] && [ -t 0 ]; then
     echo
 
     # Final output
+
+    # Normalize CPU and FPS to avoid leading zeros, e.g. CPU=01 -> CPU=1, FPS=00060 -> FPS=60
+    LAUNCH_ENV=$(
+        printf '%s\n' "$LAUNCH_ENV" \
+        | sed -E 's/(^|[[:space:]])CPU=0+([1-9][0-9]*)/\1CPU=\2/g' \
+        | sed -E 's/(^|[[:space:]])FPS=0+([1-9][0-9]*)/\1FPS=\2/g'
+    )
+
     LAUNCH_ENV=$(trim "$LAUNCH_ENV")
-    SCRIPT_PATH="$HOME/bin/gaming_env_wrapper.sh"
+
+    # Try to detect actual script path for the generated launch line
+    if command -v gaming_env_wrapper.sh >/dev/null 2>&1; then
+        SCRIPT_PATH=$(command -v gaming_env_wrapper.sh)
+    elif [ -n "$0" ]; then
+        SCRIPT_PATH="$0"
+    else
+        SCRIPT_PATH="$HOME/bin/gaming_env_wrapper.sh"
+    fi
 
     printf "%s\n\n" "${BOLD}${CYAN}=== Generated Steam launch options ===${RESET}"
     if [ -n "$LAUNCH_ENV" ]; then
@@ -574,11 +731,9 @@ if [ "$#" -eq 0 ] && [ -t 0 ]; then
     exit 0
 fi
 
-
 ###############################################################################
 # NORMAL WRAPPER MODE (used by Steam) – non-interactive
 ###############################################################################
-
 
 # HDR toggle
 if [ "${HDR:-0}" = "1" ]; then
@@ -676,7 +831,7 @@ if [ "${NTS:-0}" = "1" ]; then
     export PROTON_USE_NTSYNC=1
 fi
 
-# CPU topology
+# CPU topology (non-interactive: from CPU= env/toggle)
 if [ -n "${CPU:-}" ]; then
     case "$CPU" in
         ''|*[!0-9]*)
@@ -700,6 +855,28 @@ if [ -n "${CPU:-}" ]; then
     esac
 fi
 
+# Optional debug: show final important env vars and command
+if [ "${GENVW_DEBUG:-0}" = "1" ]; then
+    echo "gENVW debug: effective environment and command:" >&2
+    for var in \
+        PROTON_ENABLE_WAYLAND PROTON_ENABLE_HDR DXVK_HDR ENABLE_HDR_WSI \
+        PROTON_FSR4_RDNA3_UPGRADE PROTON_FSR4_UPGRADE PROTON_FSR4_INDICATOR \
+        WINE_FULLSCREEN_FSR WINE_FULLSCREEN_FSR_STRENGTH \
+        MANGOHUD MANGOHUD_CONFIG \
+        PROTON_LOG WINEDEBUG DXVK_LOG_LEVEL VKD3D_DEBUG \
+        DXVK_ASYNC PROTON_LOCAL_SHADER_CACHE PROTON_NO_WM_DECORATION \
+        PROTON_USE_NTSYNC WINE_CPU_TOPOLOGY
+    do
+        eval val=\$$var
+        if [ -n "$val" ]; then
+            echo "  $var=$val" >&2
+        fi
+    done
+    echo "  GP=${GP:-0} GM=${GM:-0}" >&2
+    echo "  Command: $*" >&2
+fi
+
+
 # CachyOS game-performance
 if [ "${GP:-0}" = "1" ] && command -v game-performance >/dev/null 2>&1; then
     set -- game-performance "$@"
@@ -711,3 +888,4 @@ if [ "${GM:-0}" = "1" ] && command -v gamemoderun >/dev/null 2>&1; then
 else
     exec "$@"
 fi
+# end of gENVW
