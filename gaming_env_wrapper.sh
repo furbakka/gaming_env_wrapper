@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# gaming_env_wrapper.sh Proton/DXVK/FSR4 env wrapper
+# gaming_env_wrapper.sh / gENVW – Proton/DXVK/FSR4 env wrapper
 # Copyright (C) 2025 furbakka
 GENVW_VERSION="0.4.0"
 #
@@ -17,7 +17,11 @@ GENVW_VERSION="0.4.0"
 # Wrapper to control Proton / DXVK / FSR4 / CachyOS options
 # via short toggles in Steam launch options.
 #
-# Example Steam launch options:
+# Example Steam launch options (installed as genvw):
+#   HDR=1 FSR4=4.0.2 LSC=1 NVMD=1 NTS=1 CPU=16 GP=1 GM=1 \
+#   genvw %command%
+#
+# Or, if you call the script directly:
 #   HDR=1 FSR4=4.0.2 LSC=1 NVMD=1 NTS=1 CPU=16 GP=1 GM=1 \
 #   /home/youruser/bin/gaming_env_wrapper.sh %command%
 
@@ -57,7 +61,7 @@ show_genvw_banner() {
   done <<'EOF'
 ╔══════════════════════════════════════════════════════════╗
 ║                          gENVW                          ║
-║          Proton / DXVK / FSR4 / MangoHUD helper         ║
+║           Proton / DXVK / FSR4 helper script            ║
 ║                           by furbakka                   ║
 ╚══════════════════════════════════════════════════════════╝
 EOF
@@ -128,16 +132,21 @@ detect_rdna_gen() {
 
 show_help() {
     cat <<EOF
-gENVW (gaming_env_wrapper.sh) - Proton / DXVK / FSR4 / MangoHUD wrapper
+gENVW (gaming_env_wrapper.sh / genvw) - Proton / DXVK / FSR4 wrapper
 
 Usage:
+  genvw [ENV_TOGGLES...] <command> [args...]
+  HDR=1 FSR4=4.0.2 LSC=1 NVMD=1 NTS=1 CPU=16 GP=1 GM=1 \\
+    genvw %command%
+
+  # If you call the script directly:
   gaming_env_wrapper.sh [ENV_TOGGLES...] <command> [args...]
   HDR=1 FSR4=4.0.2 LSC=1 NVMD=1 NTS=1 CPU=16 GP=1 GM=1 \\
     gaming_env_wrapper.sh %command%
 
 Interactive mode:
-  Run gaming_env_wrapper.sh with no arguments in a terminal to start
-  an interactive wizard that asks about HDR, FSR4, etc.
+  Run genvw (or gaming_env_wrapper.sh) with no arguments in a terminal
+  to start an interactive wizard that asks about HDR, FSR4, etc.
   It then prints a ready-to-paste Steam launch line.
 
 Toggles (set as environment before the script):
@@ -157,6 +166,8 @@ Toggles (set as environment before the script):
 
 Other:
   GENVW_NO_BANNER=1   Disable the animated banner in interactive mode.
+  GENVW_NO_COLOR=1    Disable ANSI colors even in a TTY.
+  GENVW_DEBUG=1       Print effective env + final command before exec.
 
 Project page:
   https://github.com/furbakka/gaming-env-wrapper
@@ -188,7 +199,7 @@ if [ "$#" -eq 0 ] && [ -t 0 ]; then
         show_genvw_banner
     fi
 
-    printf "%s\n" "${BOLD}${CYAN}=== gaming_env_wrapper.sh – Interactive Steam launch options generator ===${RESET}"
+    printf "%s\n" "${BOLD}${CYAN}=== gENVW – Interactive Steam launch options generator ===${RESET}"
     echo
     echo "Answer the questions below. At the end you'll get a line you can paste"
     echo "into Steam's Launch options for your game."
@@ -642,12 +653,15 @@ if [ "$#" -eq 0 ] && [ -t 0 ]; then
     LAUNCH_ENV=$(trim "$LAUNCH_ENV")
 
     # Try to detect actual script path for the generated launch line
-    if command -v gaming_env_wrapper.sh >/dev/null 2>&1; then
+    # Prefer "genvw" (recommended install name), fall back to raw script
+    if command -v genvw >/dev/null 2>&1; then
+        SCRIPT_PATH=$(command -v genvw)
+    elif command -v gaming_env_wrapper.sh >/dev/null 2>&1; then
         SCRIPT_PATH=$(command -v gaming_env_wrapper.sh)
     elif [ -n "$0" ]; then
         SCRIPT_PATH="$0"
     else
-        SCRIPT_PATH="$HOME/bin/gaming_env_wrapper.sh"
+        SCRIPT_PATH="$HOME/bin/genvw"
     fi
 
     printf "%s\n\n" "${BOLD}${CYAN}=== Generated Steam launch options ===${RESET}"
