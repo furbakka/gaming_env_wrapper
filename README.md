@@ -1,48 +1,50 @@
-# gaming_env_wrapper (gENVW)
+# gENVW
 
-<p align="center">
-  <img src="screenshots/gENVW_main.jpg" alt="gENVW interactive wizard in Konsole" width="70%">
-</p>
-
-`gaming_env_wrapper.sh` is a small shell wrapper to control Proton, DXVK, MangoHUD and some CachyOS-related game options using **short environment toggles** in Steam launch options (or from Lutris).
+`genvw` (gENVW) is a small shell wrapper to control Proton, DXVK, FSR4 and some CachyOS-related game options using **short environment toggles** in Steam launch options (or from Lutris).
 
 It solves a few problems:
 
 - Some env vars set in **Lutris** don’t always reach **Steam/Proton** reliably.
 - Writing huge per-game env strings in Steam like  
-  `PROTON_ENABLE_HDR=1 DXVK_HDR=1 PROTON_FSR4_RDNA3_UPGRADE=4.0.2 MANGOHUD=1 ...`  
+  `PROTON_ENABLE_HDR=1 DXVK_HDR=1 PROTON_FSR4_RDNA3_UPGRADE=4.0.2 PROTON_LOCAL_SHADER_CACHE=1 ...`  
   is annoying and unreadable.
-  The idea is: one script, with short toggles, that you can reuse across games and launchers.
+
+The idea is: one script, with short toggles, that you can reuse across games and launchers.
 
 With this wrapper you can do:
 
-```text
-HDR=1 FSR4=4.0.2 FPS=141 HUD=1 LSC=1 NVMD=1 NTS=1 CPU=16 GP=1 GM=1 \
-/home/youruser/bin/gaming_env_wrapper.sh %command%
-```
+~~~text
+HDR=1 FSR4=4.0.2 LSC=1 NVMD=1 NTS=1 CPU=16 GP=1 GM=1 \
+genvw %command%
+~~~
 
-and the script will translate those short toggles into the correct Proton / DXVK / Wine / MangoHUD env variables.
+and the script will translate those short toggles into the correct Proton / DXVK / Wine env variables.
+
+> **Note:** If you prefer, you can still name the file `gaming_env_wrapper.sh` and symlink it to `genvw`.  
+> The README assumes the main entrypoint is called `genvw`.
 
 ---
 
 ## Features
 
 - **Short toggles instead of walls of env vars**  
-  - `HDR=1`, `FSR4=4.0.2`, `FSR4SHOW=1`, `FFSR=3`, `FPS=141`, `HUD=1`, `ASYNC=1`, `CPU=16`, `GP=1`, `GM=1`, …
+  - `HDR=1`, `FSR4=4.0.2`, `FSR4SHOW=1`, `FFSR=3`, `ASYNC=1`, `CPU=16`, `GP=1`, `GM=1`, …
 - **Interactive wizard mode**  
   - If run from a TTY (e.g. terminal), it asks you questions and prints a ready-to-paste Steam launch line.
 - **FSR4 management for RDNA3/RDNA4**  
-  - Handles the Proton FSR4 env var quirks for RDNA3 and RDNA4.
+  - Hides Proton’s FSR4 env var quirks for RDNA3 and RDNA4 behind simple toggles.
 - **Wayland HDR path**  
   - HDR toggle sets all the relevant Proton/DXVK variables for HDR on Wayland.
-- **MangoHUD integration**  
-  - FPS limit + HUD toggle in one place.
 - **Optional DXVK async, local shader cache, window tweaks, NTSYNC, CPU topology**  
   - One-letter switches instead of remembering variable names.
-- **game-performance / gamemoderun integration** (CachyOS & others)  
+- **`game-performance` / `gamemoderun` integration** (CachyOS & others)  
   - Optional wrapping of your command with `game-performance` and/or `gamemoderun` if installed.
 - **Single place to maintain env logic**  
   - If Proton or DXVK change env names later, you only update this script once.
+
+> **Note about MangoHUD:**  
+> gENVW no longer manages MangoHUD’s FPS limiting or HUD toggles.  
+> Use MangoHUD’s own config (`MangoHud.conf` / per-game `.conf`) or other tools (dxvk.conf, gamescope, in-game limiter) if you want FPS caps.
 
 ---
 
@@ -51,7 +53,6 @@ and the script will translate those short toggles into the correct Proton / DXVK
 - Linux (tested on **Arch / CachyOS**).
 - **Steam** with Proton installed.
 - Optional extras (only used if toggles are enabled / binaries exist):
-  - **MangoHUD** (`MANGOHUD`)
   - **gamemoded** (`gamemoderun`)
   - **game-performance** (CachyOS helper)
   - `pciutils` (`lspci`) – for automatic RDNA detection
@@ -62,31 +63,40 @@ and the script will translate those short toggles into the correct Proton / DXVK
 
 1. **Place the script**
 
-   ```bash
+   Example layout:
+
+   ~~~bash
    mkdir -p "$HOME/bin"
-   cp gaming_env_wrapper.sh "$HOME/bin/"
-   chmod +x "$HOME/bin/gaming_env_wrapper.sh"
-   ```
+   cp genvw "$HOME/bin/"
+   chmod +x "$HOME/bin/genvw"
+   ~~~
+
+   If you’re still using the old name:
+
+   ~~~bash
+   # Optional compatibility symlink
+   ln -s "$HOME/bin/genvw" "$HOME/bin/gaming_env_wrapper.sh"
+   ~~~
 
 2. **Ensure `$HOME/bin` is in your PATH**
 
    Example for **fish** (CachyOS default):
 
-   ```fish
+   ~~~fish
    set -U fish_user_paths $HOME/bin $fish_user_paths
-   ```
+   ~~~
 
 3. **Verify**
 
-   ```bash
-   which gaming_env_wrapper.sh
-   ```
+   ~~~bash
+   which genvw
+   ~~~
 
    You should see something like:
 
-   ```text
-   /home/youruser/bin/gaming_env_wrapper.sh
-   ```
+   ~~~text
+   /home/youruser/bin/genvw
+   ~~~
 
 ---
 
@@ -96,11 +106,11 @@ and the script will translate those short toggles into the correct Proton / DXVK
 
 Run the script **without arguments** in a terminal:
 
-```bash
-gaming_env_wrapper.sh
-# or
-/home/youruser/bin/gaming_env_wrapper.sh
-```
+~~~bash
+genvw
+# or, with full path:
+$HOME/bin/genvw
+~~~
 
 If stdin/stdout are TTYs, the script will:
 
@@ -110,35 +120,25 @@ If stdin/stdout are TTYs, the script will:
   - Which FSR4 version for RDNA3 or RDNA4?
   - Show FSR4 overlay?
   - Use fullscreen FSR (FFSR)?
-  - Enable MangoHUD? FPS limit?
   - Enable DXVK async?
   - Use local shader cache?
+  - Disable WM decorations (borderless)?
+  - Use NTSYNC?
   - Fake CPU topology? (N logical CPUs)
   - Wrap with `game-performance` and/or `gamemoderun`?
 
-    ## Preview
-
-  <p align="center">
-  <img src="./screenshots/gENVW_1.jpg" alt="gENVW wizard – HDR/FSR4" width="49%">
-  <img src="./screenshots/gENVW_2.jpg" alt="gENVW wizard – FPS-MangoHUD-CPU-Shader Cache.." width="49%">
-  </p>
-
 At the end it prints something like:
 
-```text
+~~~text
 === Generated Steam launch options ===
 
-HDR=1 FSR4=4.0.2 FPS=141 HUD=1 LSC=1 NVMD=1 NTS=1 CPU=16 GP=1 \
-/home/youruser/bin/gaming_env_wrapper.sh %command%
-```
+HDR=1 FSR4=4.0.2 LSC=1 NVMD=1 NTS=1 CPU=16 GP=1 GM=1 \
+genvw %command%
+~~~
 
 Copy that line and paste it into:
 
 > **Steam → Properties → General → Launch Options**
-> 
-<p align="center">
-  <img src="screenshots/gENVW_3.jpg" alt="gENVW interactive wizard in Konsole" width="70%">
-</p>
 
 ---
 
@@ -146,10 +146,10 @@ Copy that line and paste it into:
 
 If you don’t want the wizard, you can write your own toggles directly in Steam:
 
-```text
-HDR=1 FSR4=4.0.2 FSR4SHOW=1 FPS=117 HUD=1 LSC=1 NVMD=1 NTS=1 CPU=16 GP=1 GM=1 \
-/home/youruser/bin/gaming_env_wrapper.sh %command%
-```
+~~~text
+HDR=1 FSR4=4.0.2 FSR4SHOW=1 LSC=1 NVMD=1 NTS=1 CPU=16 GP=1 GM=1 \
+genvw %command%
+~~~
 
 The wrapper will translate this into the actual Proton / DXVK / Wine env vars.
 
@@ -164,19 +164,19 @@ If you launch Steam games through **Lutris** and Lutris doesn’t reliably pass 
 
 1. In **Lutris**, set the **executable** to:
 
-   ```text
-   /home/youruser/bin/gaming_env_wrapper.sh
-   ```
+   ~~~text
+   /home/youruser/bin/genvw
+   ~~~
 
 2. Put your Steam command as **arguments**, for example:
 
-   ```text
+   ~~~text
    %command%
-   ```
+   ~~~
 
-3. Inside **Steam**, use the Launch Options with env toggles as shown above.
+3. Inside **Steam**, use the launch options with env toggles as shown above.
 
-This ensures the final Proton process still sees all variables set by `gaming_env_wrapper.sh`.
+This ensures the final Proton process still sees all variables set by `genvw`.
 
 ---
 
@@ -188,24 +188,23 @@ The script translates them into one or more underlying Proton/DXVK/Wine envs.
 | Toggle      | Values           | Effect |
 |------------|------------------|--------|
 | `HDR`      | `0` / `1`        | If `1`: sets `PROTON_ENABLE_WAYLAND=1`, `PROTON_ENABLE_HDR=1`, `DXVK_HDR=1`, `ENABLE_HDR_WSI=1` (Wayland HDR path). |
-| `FSR4`     | `0` / `1` / `ver` | **RDNA3 path**: sets `PROTON_FSR4_RDNA3_UPGRADE=1` and optionally a specific FSR4 version (e.g. `4.0.2`, `4.0.4`) via the same variable (see FSR4 details below). |
-| `FSR4R4`   | `0` / `1` / `ver` | **RDNA4/global path**: sets `PROTON_FSR4_UPGRADE=1` or `PROTON_FSR4_UPGRADE=<version>`. |
+| `FSR4`     | `0` / `1` / `ver` | **RDNA3 path**: sets `PROTON_FSR4_RDNA3_UPGRADE` to either `1` (generic) or a specific FSR4 version (e.g. `4.0.2`). |
+| `FSR4R4`   | `0` / `1` / `ver` | **RDNA4/global path**: sets `PROTON_FSR4_UPGRADE` to `1` (default/latest) or a specific FSR4 version. |
 | `FSR4SHOW` | `0` / `1`        | If `1`: `PROTON_FSR4_INDICATOR=1` (on-screen FSR4 overlay). |
 | `FFSR`     | `0` / `1–5`      | If HDR is off and `FFSR > 0`: `WINE_FULLSCREEN_FSR=1`. If `FFSR > 1`, sets `WINE_FULLSCREEN_FSR_STRENGTH`. |
-| `HUD`      | `0` / `1`        | If `1`: `MANGOHUD=1`. |
-| `FPS`      | `0` / `int`      | If `> 0`: enables MangoHUD and sets `MANGOHUD_CONFIG="fps_limit=<FPS>,fps_limit_method=late"`. |
 | `DEBUG`    | `0` / `1`        | If `1`: sets `PROTON_LOG=1`, `WINEDEBUG=-all`, `DXVK_LOG_LEVEL=debug`, `VKD3D_DEBUG=warn`, `PROTON_FSR4_INDICATOR=1`. |
 | `ASYNC`    | `0` / `1`        | If `1`: `DXVK_ASYNC=1` (recommended only for singleplayer). |
 | `LSC`      | `0` / `1`        | If `1`: `PROTON_LOCAL_SHADER_CACHE=1`. |
 | `NVMD`     | `0` / `1`        | If `1`: `PROTON_NO_WM_DECORATION=1` (borderless window). |
 | `NTS`      | `0` / `1`        | If `1`: `PROTON_USE_NTSYNC=1` (requires `/dev/ntsync`). |
-| `CPU`      | `0` / `int`      | If `> 0`: sets `WINE_CPU_TOPOLOGY="N:0,1,...,N-1"` (fake CPU topology). |
+| `CPU`      | `0` / `int`      | If `> 0`: sets `WINE_CPU_TOPOLOGY="N:0,1,...,N-1"` so the game sees only N logical CPUs. |
 | `GP`       | `0` / `1`        | If `1` and `game-performance` exists: wraps the command in `game-performance …`. |
 | `GM`       | `0` / `1`        | If `1` and `gamemoderun` exists: runs `gamemoderun …`. |
 
-> **Note:**  
+> **Notes:**  
 > - `HDR=1` will **disable `FFSR`** in the script – FFSR is only used for SDR titles.  
-> - If a toggle is omitted, the script uses its internal default (usually “off”).
+> - If a toggle is omitted, the script uses its internal default (usually “off”).  
+> - FPS limiting is **intentionally not handled** by gENVW anymore. Use in-game limiters, MangoHUD configs, `dxvk.conf`, or gamescope if you need FPS caps.
 
 ---
 
@@ -215,10 +214,10 @@ FSR4 handling in Proton is a bit weird, especially on **RDNA3**:
 
 - On **RDNA3**, Proton uses `PROTON_FSR4_RDNA3_UPGRADE`:
   - `PROTON_FSR4_RDNA3_UPGRADE=1` → enable FSR4 and allow download/upgrade.
-  - `PROTON_FSR4_RDNA3_UPGRADE=4.0.2` → also used by Proton to select a specific version.
+  - `PROTON_FSR4_RDNA3_UPGRADE=<version>` → also used by Proton to select a specific version.
 - On **RDNA4** (and globally), Proton uses `PROTON_FSR4_UPGRADE`:
   - `PROTON_FSR4_UPGRADE=1` → enable upgrade globally.
-  - `PROTON_FSR4_UPGRADE=4.0.x` → pick a specific FSR4 version.
+  - `PROTON_FSR4_UPGRADE=<version>` → pick a specific FSR4 version.
 
 The wrapper hides this quirk behind two simple toggles:
 
@@ -255,6 +254,25 @@ If `pciutils` is missing or your GPU name is unusual, detection falls back to **
 
 ---
 
+## Advanced gENVW env variables
+
+These are extra env vars that affect gENVW itself (not the game):
+
+- `GENVW_NO_BANNER=1`  
+  Disable the animated banner in interactive mode.
+- `GENVW_NO_COLOR=1`  
+  Force plain text output (no ANSI colors), even in a TTY.
+- `GENVW_DEBUG=1`  
+  Print the effective Proton/DXVK/Wine env vars and final command before exec (useful for debugging).
+
+Example:
+
+~~~bash
+GENVW_NO_COLOR=1 GENVW_DEBUG=1 genvw %command%
+~~~
+
+---
+
 ## Safety
 
 - **No sudo required.**
@@ -274,14 +292,14 @@ Worst case if you misconfigure something: your game may fail to launch or use od
 The script is just a shell wrapper. You can:
 
 - Add new toggles (e.g. `VKVALIDATION=1`, `ESYNC=0`, etc.).
-- Change defaults (for example, enable MangoHUD by default unless `HUD=0`).
+- Change defaults (for example, always enable `LSC=1` unless disabled).
 - Adjust how `CPU` maps to `WINE_CPU_TOPOLOGY` for your specific CPU.
 
-Keeping the logic in one place (`gaming_env_wrapper.sh`) is much easier than editing dozens of per-game env strings.
+Keeping the logic in one place (`genvw`) is much easier than editing dozens of per-game env strings.
 
 ---
 
 ## License
 
 This project is licensed under the GNU General Public License v3.0 or later (GPL-3.0-or-later).  
-See the [LICENSE](./LICENSE) file for details.
+See the `LICENSE` file for details.

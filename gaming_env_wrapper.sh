@@ -1,8 +1,8 @@
 #!/bin/sh
 #
-# gaming_env_wrapper.sh Proton/DXVK/MangoHUD env wrapper
-# Copyright (C) 2025 furbacca
-GENVW_VERSION="0.2.0"
+# gaming_env_wrapper.sh Proton/DXVK/FSR4 env wrapper
+# Copyright (C) 2025 furbakka
+GENVW_VERSION="0.4.0"
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,11 +14,11 @@ GENVW_VERSION="0.2.0"
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 # See the GNU General Public License for more details.
 #
-# Wrapper to control Proton / DXVK / MangoHUD / CachyOS options
+# Wrapper to control Proton / DXVK / FSR4 / CachyOS options
 # via short toggles in Steam launch options.
 #
 # Example Steam launch options:
-#   HDR=1 FSR4=4.0.2 FPS=141 HUD=1 LSC=1 NVMD=1 NTS=1 GP=1 GM=1 CPU=16 \
+#   HDR=1 FSR4=4.0.2 LSC=1 NVMD=1 NTS=1 CPU=16 GP=1 GM=1 \
 #   /home/youruser/bin/gaming_env_wrapper.sh %command%
 
 # Animated gENVW banner (for interactive wizard only)
@@ -53,7 +53,7 @@ show_genvw_banner() {
     esac
 
     printf '%s%s%s%s\n' "$pad" "$color" "$line" "$RESET"
-    sleep 0.25    # delay between lines (increase for slower)
+    sleep 0.25
   done <<'EOF'
 ╔══════════════════════════════════════════════════════════╗
 ║                          gENVW                          ║
@@ -125,18 +125,19 @@ detect_rdna_gen() {
 
     echo 0
 }
+
 show_help() {
     cat <<EOF
 gENVW (gaming_env_wrapper.sh) - Proton / DXVK / FSR4 / MangoHUD wrapper
 
 Usage:
   gaming_env_wrapper.sh [ENV_TOGGLES...] <command> [args...]
-  HDR=1 FSR4=4.0.2 FPS=141 HUD=1 LSC=1 NVMD=1 NTS=1 CPU=16 GP=1 GM=1 \\
+  HDR=1 FSR4=4.0.2 LSC=1 NVMD=1 NTS=1 CPU=16 GP=1 GM=1 \\
     gaming_env_wrapper.sh %command%
 
 Interactive mode:
   Run gaming_env_wrapper.sh with no arguments in a terminal to start
-  an interactive wizard that asks about HDR, FSR4, FPS limit, etc.
+  an interactive wizard that asks about HDR, FSR4, etc.
   It then prints a ready-to-paste Steam launch line.
 
 Toggles (set as environment before the script):
@@ -145,8 +146,6 @@ Toggles (set as environment before the script):
   FSR4R4=0|1|ver RDNA4/global FSR4 (PROTON_FSR4_UPGRADE=1 or =<ver>)
   FSR4SHOW=0|1   FSR4 on-screen indicator (PROTON_FSR4_INDICATOR=1)
   FFSR=0|1-5     Wine fullscreen FSR scaler (SDR only)
-  HUD=0|1        MangoHUD overlay (MANGOHUD=1)
-  FPS=0|N        MangoHUD FPS limiter (also enables MANGOHUD)
   DEBUG=0|1      Proton/DXVK/VKD3D logging + FSR indicator
   ASYNC=0|1      DXVK async (singleplayer only)
   LSC=0|1        Local shader cache (PROTON_LOCAL_SHADER_CACHE=1)
@@ -163,6 +162,7 @@ Project page:
   https://github.com/furbakka/gaming-env-wrapper
 EOF
 }
+
 show_version() {
     printf 'gENVW (gaming_env_wrapper.sh) version %s\n' "$GENVW_VERSION"
 }
@@ -535,74 +535,6 @@ if [ "$#" -eq 0 ] && [ -t 0 ]; then
     fi
 
     ########################
-    # MangoHUD basic
-    ########################
-    echo "${BOLD}HUD:${RESET} Enable MangoHUD overlay (MANGOHUD=1)."
-    if ask_yes_no "${YELLOW}Enable MangoHUD? [y/n]: ${RESET}"; then
-        LAUNCH_ENV="$LAUNCH_ENV HUD=1"
-    fi
-    echo
-
-    ########################
-    # FPS limiter
-    ########################
-    while :; do
-        echo "${BOLD}FPS:${RESET} MangoHUD FPS limiter (also auto-enables MANGOHUD)."
-        echo "  0 = off (no FPS limit set by the wrapper)"
-        printf "%s" "${YELLOW}FPS limit (e.g. 141, 117, 60) [0]: ${RESET}"
-        read val
-        val=$(trim "$val")
-        [ -z "$val" ] && val="0"
-
-        case "$val" in
-            0)
-                echo
-                break
-                ;;
-            *[!0-9]*)
-                printf "%s\n\n" "${RED}Please enter 0 or a positive number.${RESET}"
-                ;;
-            *)
-                # numeric > 0
-                if [ "$val" -gt 140 ] 2>/dev/null; then
-                    # pseudo-random index based on FPS value
-                    idx=$(( val % 8 ))
-                    case "$idx" in
-                        0)
-                            printf "%s\n\n" "${MAGENTA}FPS=${val}? Trying to heat the room with your GPU, huh?${RESET}"
-                            ;;
-                        1)
-                            printf "%s\n\n" "${MAGENTA}FPS=${val}? Your OLED just filed a noise complaint.${RESET}"
-                            ;;
-                        2)
-                            printf "%s\n\n" "${MAGENTA}FPS=${val}? Welcome to the jet engine benchmark lab.${RESET}"
-                            ;;
-                        3)
-                            printf "%s\n\n" "${MAGENTA}FPS=${val}? Human eyes stopped at 60, but okay gamer.${RESET}"
-                            ;;
-                        4)
-                            printf "%s\n\n" "${MAGENTA}FPS=${val}? Even the kernel scheduler is screaming.${RESET}"
-                            ;;
-                        5)
-                            printf "%s\n\n" "${MAGENTA}FPS=${val}? Good luck explaining this power bill to anyone.${RESET}"
-                            ;;
-                        6)
-                            printf "%s\n\n" "${MAGENTA}FPS=${val}? Are you benchmarking time itself or the game?${RESET}"
-                            ;;
-                        7)
-                            printf "%s\n\n" "${MAGENTA}FPS=${val}? CachyOS devs just felt a disturbance in the force.${RESET}"
-                            ;;
-                    esac
-                fi
-
-                LAUNCH_ENV="$LAUNCH_ENV FPS=$val"
-                echo
-                break
-                ;;
-        esac
-    done
-
-    ########################
     # DEBUG
     ########################
     echo "${BOLD}DEBUG:${RESET} Enable Proton/DXVK/VKD3D logging + FSR overlay (for troubleshooting)."
@@ -701,11 +633,10 @@ if [ "$#" -eq 0 ] && [ -t 0 ]; then
 
     # Final output
 
-    # Normalize CPU and FPS to avoid leading zeros, e.g. CPU=01 -> CPU=1, FPS=00060 -> FPS=60
+    # Normalize CPU to avoid leading zeros, e.g. CPU=01 -> CPU=1
     LAUNCH_ENV=$(
         printf '%s\n' "$LAUNCH_ENV" \
-        | sed -E 's/(^|[[:space:]])CPU=0+([1-9][0-9]*)/\1CPU=\2/g' \
-        | sed -E 's/(^|[[:space:]])FPS=0+([1-9][0-9]*)/\1FPS=\2/g'
+        | sed -E 's/(^|[[:space:]])CPU=0+([1-9][0-9]*)/\1CPU=\2/g'
     )
 
     LAUNCH_ENV=$(trim "$LAUNCH_ENV")
@@ -783,25 +714,6 @@ if [ "${HDR:-0}" != "1" ] && [ -n "${FFSR:-}" ] && [ "$FFSR" != "0" ]; then
     esac
 fi
 
-# MangoHUD basic
-if [ "${HUD:-0}" = "1" ]; then
-    export MANGOHUD=1
-fi
-
-# FPS limiter
-if [ -n "${FPS:-}" ]; then
-    case "$FPS" in
-        ''|*[!0-9]*)
-            ;;
-        *)
-            if [ "$FPS" -gt 0 ]; then
-                export MANGOHUD=1
-                export MANGOHUD_CONFIG="fps_limit=${FPS},fps_limit_method=late"
-            fi
-            ;;
-    esac
-fi
-
 # Debug / logging
 if [ "${DEBUG:-0}" = "1" ]; then
     export PROTON_LOG=1
@@ -862,7 +774,7 @@ if [ "${GENVW_DEBUG:-0}" = "1" ]; then
         PROTON_ENABLE_WAYLAND PROTON_ENABLE_HDR DXVK_HDR ENABLE_HDR_WSI \
         PROTON_FSR4_RDNA3_UPGRADE PROTON_FSR4_UPGRADE PROTON_FSR4_INDICATOR \
         WINE_FULLSCREEN_FSR WINE_FULLSCREEN_FSR_STRENGTH \
-        MANGOHUD MANGOHUD_CONFIG \
+        MANGOHUD \
         PROTON_LOG WINEDEBUG DXVK_LOG_LEVEL VKD3D_DEBUG \
         DXVK_ASYNC PROTON_LOCAL_SHADER_CACHE PROTON_NO_WM_DECORATION \
         PROTON_USE_NTSYNC WINE_CPU_TOPOLOGY
@@ -875,7 +787,6 @@ if [ "${GENVW_DEBUG:-0}" = "1" ]; then
     echo "  GP=${GP:-0} GM=${GM:-0}" >&2
     echo "  Command: $*" >&2
 fi
-
 
 # CachyOS game-performance
 if [ "${GP:-0}" = "1" ] && command -v game-performance >/dev/null 2>&1; then
